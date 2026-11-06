@@ -1,6 +1,7 @@
-"""واجهة GOLD-X 2.0 العربية."""
+"""واجهة GOLD-X 2.0 العربية مع طبقة تعريفية وتجهيزات نمو آمنة."""
 
 import json
+import re
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -47,8 +48,11 @@ st.markdown(
     .radar-clear { background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.25); }
     .radar-title { font-weight:700; font-size:1.08rem; margin-bottom:.35rem; }
     .radar-copy { color:#CBD5E1; margin:0; line-height:1.8; }
-    .footnote { color:#64748B; font-size:.78rem; border-top:1px solid rgba(148,163,184,.12); padding-top:1rem; margin-top:2rem; }
+    .growth-card { border:1px solid rgba(216,180,90,.22); border-radius:18px; padding:1.1rem 1.25rem; background:linear-gradient(145deg,rgba(216,180,90,.09),rgba(15,23,42,.52)); height:100%; }
+    .growth-card h3 { margin:.1rem 0 .45rem; color:#F8FAFC; }
+    .growth-card p { color:#CBD5E1; line-height:1.8; margin:0; }
     .small-muted { color:#94A3B8; font-size:.82rem; }
+    .footnote { color:#64748B; font-size:.78rem; border-top:1px solid rgba(148,163,184,.12); padding-top:1rem; margin-top:2rem; line-height:1.8; }
     div.stButton > button { border:1px solid rgba(216,180,90,.45); color:#F8FAFC; background:rgba(216,180,90,.08); border-radius:12px; font-weight:600; }
     div.stButton > button:hover { border-color:var(--gold); color:var(--gold); }
     </style>
@@ -71,6 +75,28 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# طبقة تعريفية مجانية: لا تتطلب تسجيل دخول ولا تجمع بيانات شخصية.
+st.markdown('<div class="section-kicker">عن المنصة</div>', unsafe_allow_html=True)
+intro_col, interest_col = st.columns([1.45, 1])
+with intro_col:
+    st.markdown(
+        """
+        <div class="growth-card" dir="rtl">
+          <h3>قراءة أوضح لسوق الذهب</h3>
+          <p>استكشف السعر الحالي والتوقعات والعوامل المؤثرة مجاناً. GOLD-X أداة تحليلية تساعدك على فهم السيناريوهات، وليست وعداً بالربح أو بديلاً عن مستشار مالي مرخص.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with interest_col:
+    st.markdown("**ما الذي يهمك أكثر؟**")
+    interest = st.selectbox(
+        "اختر اهتماماً واحداً (يُحفظ لهذه الجلسة فقط)",
+        ["تحليل يومي للذهب", "العوامل الاقتصادية", "رادار المخاطر", "تعلم قراءة السوق"],
+        label_visibility="collapsed",
+    )
+    st.caption(f"اختيارك الحالي: {interest}. لا يتم إرسال هذا الاختيار أو تخزينه خارج الجلسة.")
+
 @st.cache_data(ttl=300, show_spinner=False)
 def load_market_data():
     """يحد من الطلبات المتكررة مع إبقاء زر التحديث متاحاً للمستخدم."""
@@ -81,10 +107,24 @@ with st.spinner("جاري جلب البيانات الحية..."):
     raw_data = load_market_data()
 
 if raw_data is None:
-    st.error("تعذر جلب بيانات السوق حالياً. تحقق من الاتصال ثم أعد المحاولة.")
+    st.error("تعذر جلب سعر الذهب من المصدر الأساسي والاحتياطي. تحقق من الاتصال ثم أعد المحاولة لاحقاً.")
     st.stop()
 
 assert raw_data is not None
+quality = raw_data.get("data_quality", "unknown")
+quality_labels = {
+    "live": "بيانات مباشرة من المصدر الأساسي",
+    "partial": "بيانات جزئية: بعض المؤشرات تستخدم قيماً افتراضية",
+    "fallback": "بيانات احتياطية: سعر الذهب من مصدر بديل",
+    "unknown": "حالة المصدر غير محددة",
+}
+if quality == "live":
+    st.success(f"{quality_labels[quality]} · {raw_data.get('data_source', 'غير محدد')} · {raw_data.get('updated_at_utc', '')}")
+else:
+    st.warning(f"{quality_labels.get(quality, quality)} · {raw_data.get('data_source', 'غير محدد')} · {raw_data.get('updated_at_utc', '')}")
+for data_warning in raw_data.get("data_warnings", []):
+    st.caption(f"تنبيه مصدر البيانات: {data_warning}")
+
 result = gold_x_model(raw_data)
 
 col1, col2, col3 = st.columns(3)
@@ -175,7 +215,32 @@ with update_col:
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     st.markdown(f'<div class="small-muted" style="padding:.65rem 0">آخر طلب تحديث: {updated}</div>', unsafe_allow_html=True)
 
+# تجهيز النشرة بدون تخزين البريد: الربط الفعلي يحتاج مزوداً خارجياً وموافقة المستخدم.
+st.markdown('<div class="section-kicker">📬 نشرة GOLD-X</div>', unsafe_allow_html=True)
+st.write("احصل مستقبلاً على ملخصات السوق الأسبوعية. هذا النموذج لا يرسل أو يحفظ البريد حالياً؛ أضف مزود نشرة بعد اختيار سياسة الخصوصية وموافقة المستخدم.")
+with st.form("newsletter_interest_form", clear_on_submit=True):
+    email = st.text_input("البريد الإلكتروني (اختياري)", placeholder="name@example.com")
+    consent = st.checkbox("أوافق على استخدام البريد للاشتراك في النشرة عند تفعيلها")
+    submitted = st.form_submit_button("تسجيل الاهتمام")
+if submitted:
+    if not consent:
+        st.warning("يرجى تفعيل الموافقة أولاً. لم يتم حفظ أي بيانات.")
+    elif not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip()):
+        st.warning("أدخل بريداً إلكترونياً صحيحاً. لم يتم حفظ أي بيانات.")
+    else:
+        st.success("تم تسجيل اهتمامك لهذه الجلسة فقط. لم يُحفظ البريد لأن خدمة النشرة لم تُربط بعد.")
+
+# تجهيز تجاري واضح دون ادعاء وجود دفع أو إعلانات فعلية.
+st.markdown('<div class="section-kicker">🚀 ما القادم؟</div>', unsafe_allow_html=True)
+free_col, premium_col, partner_col = st.columns(3)
+with free_col:
+    st.markdown("<div class='growth-card' dir='rtl'><h3>الخطة المجانية</h3><p>بيانات السوق والتحليل الأساسي والتحديث عند الطلب متاحة للزوار دون تسجيل دخول.</p></div>", unsafe_allow_html=True)
+with premium_col:
+    st.markdown("<div class='growth-card' dir='rtl'><h3>Premium قريباً</h3><p>قد تشمل تقارير دورية وتنبيهات وسجل أداء النموذج بعد إضافة حسابات ودفع آمن. لا توجد مدفوعات مفعّلة حالياً.</p></div>", unsafe_allow_html=True)
+with partner_col:
+    st.markdown("<div class='growth-card' dir='rtl'><h3>رعاية وشراكات</h3><p>هذه مساحة مهيأة لرعاية أو رابط تابع بعد مراجعة الجهة والإفصاح عنه بوضوح. لا توجد إعلانات أو روابط تداول مفعّلة حالياً.</p></div>", unsafe_allow_html=True)
+
 st.markdown(
-    '<div class="footnote">⚠️ هذا النموذج أداة مساعدة للتفكير، وليس نصيحة استثمارية. الأسواق متغيرة والنتائج التقديرية ليست ضماناً للأداء المستقبلي.</div></div>',
+    '<div class="footnote">⚠️ هذا النموذج أداة مساعدة للتفكير، وليس نصيحة استثمارية. الأسواق متغيرة والنتائج التقديرية ليست ضماناً للأداء المستقبلي. لا يتم جمع بيانات شخصية أو حفظ البريد في هذه النسخة.</div></div>',
     unsafe_allow_html=True,
 )
