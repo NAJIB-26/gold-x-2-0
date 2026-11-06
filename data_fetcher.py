@@ -105,6 +105,17 @@ def _metals_api_gold() -> Optional[float]:
     return None
 
 
+def _public_gold_api() -> Optional[float]:
+    """مصدر عام لسعر XAU/USD لا يحتاج مفتاحاً؛ يستخدم كحل احتياطي أخير."""
+    response = requests.get("https://api.gold-api.com/price/XAU/USD", timeout=8)
+    response.raise_for_status()
+    payload = response.json()
+    price = payload.get("price")
+    if price is None or float(price) <= 0:
+        raise ValueError("لم يُرجع Gold-API سعراً صالحاً")
+    return float(price)
+
+
 def _series_change(series: Optional[pd.Series], periods: int = 5) -> Optional[float]:
     if series is None or len(series) <= periods:
         return None
@@ -132,13 +143,19 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
 
     gold_close = series["gold"]
     metals_gold: Optional[float] = None
+    public_gold: Optional[float] = None
     if gold_close is None:
         try:
             metals_gold = _metals_api_gold()
         except Exception as exc:
             warnings.append(f"تعذر استخدام Metals-API الاحتياطي: {exc}")
+        if metals_gold is None:
+            try:
+                public_gold = _public_gold_api()
+            except Exception as exc:
+                warnings.append(f"تعذر استخدام Gold-API العام: {exc}")
 
-    current_price = _latest(gold_close) or metals_gold
+    current_price = _latest(gold_close) or metals_gold or public_gold
     if current_price is None:
         print("GOLD-X data fetch failed: no gold source available")
         return None
@@ -169,8 +186,11 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
         warnings.append("بيانات الذهب متاحة، لكن بعض المؤشرات الثانوية تستخدم قيماً افتراضية.")
     else:
         quality = "fallback"
-        source = "Metals-API + defaults"
-        warnings.append("يُعرض سعر الذهب من المصدر الاحتياطي مع مؤشرات ثانوية افتراضية.")
+        if metals_gold is not None:
+            source = "Metals-API + defaults"
+        else:
+            source = "Gold-API + defaults"
+        warnings.append("يُعرض سعر الذهب من مصدر احتياطي مع مؤشرات ثانوية افتراضية.")
 
     result: Dict[str, Any] = {
         "current_price": current_price,
