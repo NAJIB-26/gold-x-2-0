@@ -160,7 +160,15 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
         print("GOLD-X data fetch failed: no gold source available")
         return None
 
-    price_change = _series_change(gold_close, 1) or 0.0
+    observed_price_change = _series_change(gold_close, 1)
+    price_change = observed_price_change or 0.0
+    gold_change_5d = _series_change(gold_close, 5)
+    gold_change_20d = _series_change(gold_close, 20)
+    if gold_close is not None and len(gold_close) >= 6:
+        gold_returns = gold_close.pct_change().dropna()
+        gold_volatility_10d = float(gold_returns.tail(10).std()) if len(gold_returns) >= 3 else 0.006
+    else:
+        gold_volatility_10d = None
     dxy_change = _series_change(series["dxy"], 5)
     nasdaq_change = _series_change(series["nasdaq"], 5)
     vix_value = _latest(series["vix"])
@@ -195,6 +203,11 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
     result: Dict[str, Any] = {
         "current_price": current_price,
         "price_change": price_change,
+        "gold_change_1d": observed_price_change,
+        "gold_change_5d": gold_change_5d,
+        "gold_change_20d": gold_change_20d,
+        "gold_volatility_10d": gold_volatility_10d,
+        "gold_history_available": gold_close is not None and len(gold_close) >= 6,
         "volume_spike": 1.0,
         "dxy_change": dxy_change if dxy_change is not None else 0.0,
         "sp500_change_5d": nasdaq_change if nasdaq_change is not None else 0.0,

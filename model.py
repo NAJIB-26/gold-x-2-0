@@ -159,6 +159,63 @@ def forced_selling_radar(
     return {"status": status, "score": score, "msg": msg}
 
 
+def opening_gap_forecast(data: Dict[str, Any]) -> Dict[str, Any]:
+    """تقدير اتجاه ونطاق افتتاح الذهب بعد عطلة أو نهاية أسبوع.
+
+    هذا تقدير احتمالي تعليمي، وليس سعراً مضموناً. عند غياب السجل التاريخي
+    نمتنع عن استخدام القيم الافتراضية حتى لا نعرض إشارة مضللة للمستخدم.
+    """
+    quality = str(data.get("data_quality", "unknown"))
+    history_available = bool(data.get("gold_history_available", False))
+    if quality == "fallback" or not history_available:
+        return {
+            "status": "INSUFFICIENT",
+            "direction": "غير قابل للتقدير حالياً",
+            "expected_pct": None,
+            "lower_pct": None,
+            "upper_pct": None,
+            "probability_up": None,
+            "confidence": 0.0,
+            "message": "لا يوجد سجل تاريخي موثوق كافٍ لحساب فجوة الافتتاح. لا تعتمد على الإشارة الحالية.",
+        }
+
+    one_day = float(data.get("gold_change_1d", data.get("price_change", 0.0)) or 0.0)
+    five_day = float(data.get("gold_change_5d", 0.0) or 0.0)
+    dxy_change = float(data.get("dxy_change", 0.0) or 0.0)
+    equity_change = float(data.get("sp500_change_5d", 0.0) or 0.0)
+    volatility = float(data.get("gold_volatility_10d", 0.006) or 0.006)
+    volatility = min(max(volatility, 0.002), 0.04)
+
+    # زخم الذهب هو العامل الأكبر، مع عكس أثر الدولار وإضافة أثر المخاطرة.
+    expected = 0.45 * one_day + 0.25 * (five_day / 5.0) - 0.15 * dxy_change - 0.10 * equity_change
+    expected = min(max(expected, -0.04), 0.04)
+    band = max(0.003, volatility * 0.75)
+    lower = max(-0.06, expected - band)
+    upper = min(0.06, expected + band)
+    probability_up = min(0.85, max(0.15, 0.5 + expected / max(volatility * 3.0, 0.01)))
+
+    if expected > 0.0015:
+        direction = "ارتفاع مرجح"
+    elif expected < -0.0015:
+        direction = "هبوط مرجح"
+    else:
+        direction = "افتتاح قريب من الإغلاق"
+
+    confidence = 58.0 if quality == "live" else 42.0
+    if abs(expected) < volatility * 0.35:
+        confidence -= 8.0
+    return {
+        "status": "ESTIMATE",
+        "direction": direction,
+        "expected_pct": expected,
+        "lower_pct": lower,
+        "upper_pct": upper,
+        "probability_up": probability_up,
+        "confidence": max(0.0, confidence),
+        "message": "تقدير احتمالي مبني على الزخم والتقلب والدولار والأسهم، وليس ضماناً لسعر الافتتاح.",
+    }
+
+
 def gold_x_model(data: Dict[str, Any]) -> Dict[str, Any]:
     """الدالة الرئيسية التي تجمع الطبقات وتنتج مخرجات لوحة التحكم."""
     regime = detect_regime(
@@ -196,6 +253,7 @@ def gold_x_model(data: Dict[str, Any]) -> Dict[str, Any]:
         data["open_interest_ratio"],
         data["sp500_change_5d"],
     )
+    opening_gap = opening_gap_forecast(data)
     predicted_price = data["current_price"] * (1 + change)
     penalty = {
         MarketRegime.NORMAL: 0.0,
@@ -230,6 +288,7 @@ def gold_x_model(data: Dict[str, Any]) -> Dict[str, Any]:
         "confidence": confidence,
         "recommendation": recommendation,
         "radar": radar,
+        "opening_gap": opening_gap,
         "warnings": warnings,
         "breakdown": {"economic": economic, "flow": flow, "ai": ai},
         "weights": weights,
