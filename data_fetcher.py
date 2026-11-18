@@ -8,7 +8,10 @@ from typing import Any, Dict, Optional, cast
 import numpy as np
 import pandas as pd
 import requests
-import yfinance as yf  # type: ignore[reportMissingImports]
+try:
+    import yfinance as yf  # type: ignore[reportMissingImports]
+except Exception:  # يسمح بتشغيل المصدر الاحتياطي حتى عند تعذر تثبيت Yahoo.
+    yf = None
 
 
 # العوامل التي لا تتوفر مباشرة عبر المصدر المجاني وتُحدّث يدوياً عند الحاجة.
@@ -33,31 +36,28 @@ TICKERS = {
 
 
 def _history(ticker: str, period: str = "1mo") -> Any:
-    """تحميل سجل صغير مع محاولة واحدة إضافية لتقليل ضغط المزود."""
-    last_error: Optional[Exception] = None
-    for attempt in range(2):
-        try:
-            frame = yf.download(
-                ticker,
-                period=period,
-                auto_adjust=False,
-                progress=False,
-                threads=False,
-                timeout=8,
-            )
-            if frame is None or frame.empty:
-                raise ValueError(f"لم تصل بيانات للرمز {ticker}")
-            if isinstance(frame.columns, pd.MultiIndex):
-                frame.columns = frame.columns.get_level_values(0)
-            cleaned = frame.dropna(how="all")
-            if cleaned.empty:
-                raise ValueError(f"السجل فارغ للرمز {ticker}")
-            return cleaned
-        except Exception as exc:  # قد يحدث تقييد أو انقطاع مؤقت.
-            last_error = exc
-            if attempt == 0:
-                time.sleep(0.35)
-    raise ValueError(f"فشل جلب {ticker}: {last_error}")
+    """تحميل سجل صغير بمحاولة واحدة حتى لا يعلق تشغيل Streamlit."""
+    if yf is None:
+        raise RuntimeError("مكتبة Yahoo Finance غير متاحة")
+    try:
+        frame = yf.download(
+            ticker,
+            period=period,
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+            timeout=5,
+        )
+        if frame is None or frame.empty:
+            raise ValueError(f"لم تصل بيانات للرمز {ticker}")
+        if isinstance(frame.columns, pd.MultiIndex):
+            frame.columns = frame.columns.get_level_values(0)
+        cleaned = frame.dropna(how="all")
+        if cleaned.empty:
+            raise ValueError(f"السجل فارغ للرمز {ticker}")
+        return cleaned
+    except Exception as exc:  # قد يحدث تقييد أو انقطاع مؤقت.
+        raise ValueError(f"فشل جلب {ticker}: {exc}") from exc
 
 
 def _close_series(ticker: str, period: str = "1mo") -> pd.Series:
@@ -116,6 +116,23 @@ def _public_gold_api() -> Optional[float]:
     return float(price)
 
 
+def _goldprice_dev_gold() -> Optional[float]:
+    """مصدر احتياطي مجاني لسعر XAU/USD، لا يحتاج مفتاحاً في endpoint العام."""
+    response = requests.get(
+        "https://api.goldprice.dev/v1/prices",
+        params={"symbol": "XAU-USD-SPOT"},
+        timeout=6,
+    )
+    response.raise_for_status()
+    symbols = response.json().get("symbols", [])
+    if not symbols:
+        raise ValueError("لم يُرجع goldprice.dev رموزاً")
+    price = float(symbols[0].get("price", 0))
+    if price <= 0:
+        raise ValueError("لم يُرجع goldprice.dev سعراً صالحاً")
+    return price
+
+
 def _series_change(series: Optional[pd.Series], periods: int = 5) -> Optional[float]:
     if series is None or len(series) <= periods:
         return None
@@ -151,9 +168,13 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
             warnings.append(f"تعذر استخدام Metals-API الاحتياطي: {exc}")
         if metals_gold is None:
             try:
-                public_gold = _public_gold_api()
+                public_gold = _goldprice_dev_gold()
             except Exception as exc:
-                warnings.append(f"تعذر استخدام Gold-API العام: {exc}")
+                warnings.append(f"تعذر استخدام goldprice.dev الاحتياطي: {exc}")
+                try:
+                    public_gold = _public_gold_api()
+                except Exception as public_exc:
+                    warnings.append(f"تعذر استخدام Gold-API العام: {public_exc}")
 
     current_price = _latest(gold_close) or metals_gold or public_gold
     if current_price is None:
@@ -196,6 +217,8 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
         quality = "fallback"
         if metals_gold is not None:
             source = "Metals-API + defaults"
+        elif public_gold is not None:
+            source = "goldprice.dev أو Gold-API + defaults"
         else:
             source = "Gold-API + defaults"
         warnings.append("يُعرض سعر الذهب من مصدر احتياطي مع مؤشرات ثانوية افتراضية.")
