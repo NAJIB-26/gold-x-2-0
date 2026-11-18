@@ -1,0 +1,79 @@
+name: GOLD-X market alert
+
+
+
+on:
+
+  schedule:
+  
+    - cron: "45 21 * * 1-5"
+    
+  workflow_dispatch:
+  
+
+
+jobs:
+
+  send-market-alert:
+  
+    runs-on: ubuntu-latest
+    
+    steps:
+    
+      - name: Checkout
+      
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+      
+        uses: actions/setup-python@v5
+        
+        with:
+        
+          python-version: "3.12"
+          
+      - name: Install dependencies
+      
+        run: pip install -r requirements.txt
+        
+      - name: Send GOLD-X report
+      
+        env:
+        
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+          
+          METALS_API_KEY: ${{ secrets.METALS_API_KEY }}
+          
+        run: python alert_service.py
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
