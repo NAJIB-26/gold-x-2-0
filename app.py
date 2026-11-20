@@ -58,17 +58,62 @@ st.set_page_config(
 
 st.markdown(
     """
-    <div class="hero" dir="rtl">
-      <div>
-        <div class="eyebrow">GOLD-X / MARKET INTELLIGENCE</div>
-        <h1>🥇 GOLD-X 2.0</h1>
-        <p>نظام توقع الذهب — نموذج متعدد الطبقات: اقتصادي + تدفقات + ذكاء اصطناعي</p>
-      </div>
-      <div class="stamp">بيانات Yahoo Finance · تحديث عند الطلب</div>
-    </div>
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+    :root {
+        --gold: #D8B45A;
+        --muted: #94A3B8;
+        --line: rgba(216, 180, 90, .18);
+    }
+
+    html, body, [class*="css"] {
+        font-family: 'IBM Plex Sans Arabic', sans-serif;
+    }
+
+    .stApp {
+        background: radial-gradient(circle at 80% -10%, rgba(216,180,90,.11), transparent 32%), #080B12;
+    }
+
+    .block-container {
+        max-width: 1240px;
+        padding-top: 2.3rem;
+        padding-bottom: 3rem;
+    }
+
+    [data-testid="stHeader"] {
+        background: transparent;
+    }
+
+    .hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 2rem;
+        padding: 1.7rem 0 1.35rem;
+        border-bottom: 1px solid rgba(148,163,184,.14);
+        margin-bottom: 1.25rem;
+    }
+
+    .hero h1 {
+        margin: .25rem 0 .35rem;
+    }
+
+    .hero p, .growth-card p {
+        color: var(--muted);
+        line-height: 1.8;
+    }
+
+    .growth-card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 1.1rem 1.25rem;
+    }
+    </style>
+    <div dir="rtl">
     """,
     unsafe_allow_html=True,
-)
+),
 # طبقة تعريفية مجانية: لا تتطلب تسجيل دخول ولا تجمع بيانات شخصية.
 st.markdown('<div class="section-kicker">عن المنصة</div>', unsafe_allow_html=True)
 intro_col, interest_col = st.columns([1.45, 1])
