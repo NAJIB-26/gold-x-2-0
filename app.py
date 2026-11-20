@@ -59,26 +59,25 @@ st.markdown(
     .footnote { color:#64748B; font-size:.78rem; border-top:1px solid rgba(148,163,184,.12); padding-top:1rem; margin-top:2rem; line-height:1.8; }
     div.stButton > button { border:1px solid rgba(216,180,90,.45); color:#F8FAFC; background:rgba(216,180,90,.08); border-radius:12px; font-weight:600; }
     div.stButton > button:hover { border-color:var(--gold); color:var(--gold); }
-    </style>
+     </style>
     <div dir="rtl">
-<div class="hero" dir="rtl">
-  <div>
-    <div class="eyebrow">GOLD-X / MARKET INTELLIGENCE</div>
-    <h1>🥇 GOLD-X 2.0</h1>
-    <p>تحليل أسعار الذهب بالعربية: السعر الحالي ومؤشرات السوق وتقديرات اتجاه الذهب. أداة معلوماتية وليست نصيحة استثمارية.</p>
-  </div>
-  <div class="stamp">بيانات Yahoo Finance · تحديث عند الطلب</div>
-</div>
     """,
     unsafe_allow_html=True,
 )
 
 st.markdown(
     """
-   
+    <div class="hero" dir="rtl">
+      <div>
+        <div class="eyebrow">GOLD-X / MARKET INTELLIGENCE</div>
+        <h1>🥇 GOLD-X 2.0</h1>
+        <p>نظام توقع الذهب — نموذج متعدد الطبقات: اقتصادي + تدفقات + ذكاء اصطناعي</p>
+      </div>
+      <div class="stamp">بيانات Yahoo Finance · تحديث عند الطلب</div>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
-
 # طبقة تعريفية مجانية: لا تتطلب تسجيل دخول ولا تجمع بيانات شخصية.
 st.markdown('<div class="section-kicker">عن المنصة</div>', unsafe_allow_html=True)
 intro_col, interest_col = st.columns([1.45, 1])
