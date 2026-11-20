@@ -61,21 +61,21 @@ st.markdown(
     div.stButton > button:hover { border-color:var(--gold); color:var(--gold); }
     </style>
     <div dir="rtl">
+<div class="hero" dir="rtl">
+  <div>
+    <div class="eyebrow">GOLD-X / MARKET INTELLIGENCE</div>
+    <h1>🥇 GOLD-X 2.0</h1>
+    <p>تحليل أسعار الذهب بالعربية: السعر الحالي ومؤشرات السوق وتقديرات اتجاه الذهب. أداة معلوماتية وليست نصيحة استثمارية.</p>
+  </div>
+  <div class="stamp">بيانات Yahoo Finance · تحديث عند الطلب</div>
+</div>
     """,
     unsafe_allow_html=True,
 )
 
 st.markdown(
     """
-    <div class="hero" dir="rtl">
-      <div>
-        <div class="eyebrow">GOLD-X / MARKET INTELLIGENCE</div>
-        <h1>🥇 GOLD-X 2.0</h1>
-        <p>نظام توقع الذهب — نموذج متعدد الطبقات: اقتصادي + تدفقات + ذكاء اصطناعي</p>
-      </div>
-      <div class="stamp">بيانات Yahoo Finance · تحديث عند الطلب</div>
-    </div>
-    """,
+   
     unsafe_allow_html=True,
 )
 
