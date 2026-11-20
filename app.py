@@ -1,8 +1,9 @@
-"""واجهة GOLD-X 2.0 العربية مع طبقة تعريفية وتجهيزات نمو آمنة."""
-st.set_page_config(page_title="GOLD-X 2.0 — تحليل توقعات سعر الذهب", page_icon="🪙", layout="wide"
-import json
-import re
-from datetime import datetime, timezone
+st.set_page_config(
+    page_title="GOLD-X 2.0 | تحليل وتوقع أسعار الذهب بالعربية",
+    page_icon="🥇",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 import pandas as pd
 import plotly.graph_objects as go
