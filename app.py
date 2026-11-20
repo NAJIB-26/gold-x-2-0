@@ -1,27 +1,18 @@
+"""واجهة GOLD-X 2.0 العربية مع طبقة تعريفية وتجهيزات نمو آمنة."""
+
+import json
+import re
+from datetime import datetime, timezone
+
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
 st.set_page_config(
     page_title="GOLD-X 2.0 | تحليل وتوقع أسعار الذهب بالعربية",
     page_icon="🥇",
     layout="wide",
     initial_sidebar_state="collapsed",
-)
-
-import pandas as pd
-import plotly.graph_objects as go
-import streamlit as st  # type: ignore[reportMissingImports]
-
-from data_fetcher import fetch_live_data  # type: ignore[reportMissingImports]
-from model import gold_x_model  # type: ignore[reportMissingImports]
-
-
-st.set_page_config(
-    page_title="GOLD-X 2.0 — نظام توقع الذهب",
-    page_icon="🥇",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
-
-st.markdown(
-    """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
     :root { --gold:#D8B45A; --ink:#080B12; --muted:#94A3B8; --line:rgba(216,180,90,.18); }
