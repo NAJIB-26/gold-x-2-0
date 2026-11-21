@@ -6,13 +6,21 @@ from datetime import datetime, timezone
 
 import pandas as pd
 import plotly.graph_objects as go
-import streamlit as st
+import streamlit as st  # type: ignore[reportMissingImports]
+
+from data_fetcher import fetch_live_data  # type: ignore[reportMissingImports]
+from model import gold_x_model  # type: ignore[reportMissingImports]
+
 
 st.set_page_config(
-    page_title="GOLD-X 2.0 | تحليل وتوقع أسعار الذهب بالعربية",
+    page_title="GOLD-X 2.0 — نظام توقع الذهب",
     page_icon="🥇",
     layout="wide",
     initial_sidebar_state="collapsed",
+)
+
+st.markdown(
+    """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
     :root { --gold:#D8B45A; --ink:#080B12; --muted:#94A3B8; --line:rgba(216,180,90,.18); }
@@ -50,7 +58,7 @@ st.set_page_config(
     .footnote { color:#64748B; font-size:.78rem; border-top:1px solid rgba(148,163,184,.12); padding-top:1rem; margin-top:2rem; line-height:1.8; }
     div.stButton > button { border:1px solid rgba(216,180,90,.45); color:#F8FAFC; background:rgba(216,180,90,.08); border-radius:12px; font-weight:600; }
     div.stButton > button:hover { border-color:var(--gold); color:var(--gold); }
-     </style>
+    </style>
     <div dir="rtl">
     """,
     unsafe_allow_html=True,
@@ -58,62 +66,18 @@ st.set_page_config(
 
 st.markdown(
     """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
-
-    :root {
-        --gold: #D8B45A;
-        --muted: #94A3B8;
-        --line: rgba(216, 180, 90, .18);
-    }
-
-    html, body, [class*="css"] {
-        font-family: 'IBM Plex Sans Arabic', sans-serif;
-    }
-
-    .stApp {
-        background: radial-gradient(circle at 80% -10%, rgba(216,180,90,.11), transparent 32%), #080B12;
-    }
-
-    .block-container {
-        max-width: 1240px;
-        padding-top: 2.3rem;
-        padding-bottom: 3rem;
-    }
-
-    [data-testid="stHeader"] {
-        background: transparent;
-    }
-
-    .hero {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        gap: 2rem;
-        padding: 1.7rem 0 1.35rem;
-        border-bottom: 1px solid rgba(148,163,184,.14);
-        margin-bottom: 1.25rem;
-    }
-
-    .hero h1 {
-        margin: .25rem 0 .35rem;
-    }
-
-    .hero p, .growth-card p {
-        color: var(--muted);
-        line-height: 1.8;
-    }
-
-    .growth-card {
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 1.1rem 1.25rem;
-    }
-    </style>
-    <div dir="rtl">
+    <div class="hero" dir="rtl">
+      <div>
+        <div class="eyebrow">GOLD-X / MARKET INTELLIGENCE</div>
+        <h1>🥇 GOLD-X 2.0</h1>
+        <p>نظام توقع الذهب — نموذج متعدد الطبقات: اقتصادي + تدفقات + ذكاء اصطناعي</p>
+      </div>
+      <div class="stamp">بيانات Yahoo Finance · تحديث عند الطلب</div>
+    </div>
     """,
     unsafe_allow_html=True,
-),
+)
+
 # طبقة تعريفية مجانية: لا تتطلب تسجيل دخول ولا تجمع بيانات شخصية.
 st.markdown('<div class="section-kicker">عن المنصة</div>', unsafe_allow_html=True)
 intro_col, interest_col = st.columns([1.45, 1])
