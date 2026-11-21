@@ -1,5 +1,6 @@
 """موصل بيانات GOLD-X 2.0 متعدد المصادر مع فشل جزئي آمن."""
 
+import io
 import os
 import time
 from datetime import datetime, timezone
@@ -34,6 +35,14 @@ TICKERS = {
     "vix": "^VIX",
 }
 
+# بدائل يومية عامة من FRED للمؤشرات الثانوية. DTWEXBGS هو مؤشر الدولار
+# الواسع وليس DXY نفسه، لذلك نعرض مصدره بوضوح ولا نقدمه كبديل مطابق.
+FRED_SERIES = {
+    "dxy": "DTWEXBGS",
+    "nasdaq": "NASDAQCOM",
+    "vix": "VIXCLS",
+}
+
 
 def _history(ticker: str, period: str = "1mo") -> Any:
     """تحميل سجل صغير بمحاولة واحدة حتى لا يعلق تشغيل Streamlit."""
@@ -66,6 +75,23 @@ def _close_series(ticker: str, period: str = "1mo") -> pd.Series:
     if series.empty:
         raise ValueError(f"لا توجد أسعار إغلاق صالحة للرمز {ticker}")
     return series
+
+
+def _fred_series(series_id: str, period: str = "1mo") -> pd.Series:
+    """تحميل سلسلة FRED العامة بصيغة CSV دون الحاجة إلى مفتاح API."""
+    response = requests.get(
+        f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}",
+        params={"cosd": "2026-01-01"},
+        timeout=8,
+    )
+    response.raise_for_status()
+    frame = pd.read_csv(io.StringIO(response.text))
+    if frame.shape[1] < 2:
+        raise ValueError(f"لم تصل سلسلة FRED {series_id}")
+    series = pd.to_numeric(frame.iloc[:, 1], errors="coerce").dropna()
+    if series.empty:
+        raise ValueError(f"سلسلة FRED {series_id} فارغة")
+    return series.tail(32).reset_index(drop=True)
 
 
 def _metals_api_key() -> str:
@@ -150,13 +176,26 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
     """إرجاع البيانات مع مصدر وحالة جودة، دون إسقاط الموقع عند فشل مؤشر ثانوي."""
     warnings = []
     series: Dict[str, Optional[pd.Series]] = {}
+    source_by_name: Dict[str, str] = {}
 
     for name, ticker in TICKERS.items():
         try:
             series[name] = _close_series(ticker, "1mo")
+            source_by_name[name] = "Yahoo Finance"
         except Exception as exc:
             series[name] = None
-            warnings.append(f"تعذر تحديث {name}: {exc}")
+            fred_id = FRED_SERIES.get(name)
+            if fred_id:
+                try:
+                    series[name] = _fred_series(fred_id)
+                    source_by_name[name] = f"FRED/{fred_id}"
+                    warnings.append(f"تم استخدام FRED/{fred_id} كبديل يومي لـ {name}.")
+                    continue
+                except Exception as fred_exc:
+                    warnings.append(f"تعذر تحديث {name} من Yahoo وFRED: {fred_exc}")
+            else:
+                if name != "gold":
+                    warnings.append(f"تعذر تحديث {name}: {exc}")
 
     gold_close = series["gold"]
     metals_gold: Optional[float] = None
@@ -180,6 +219,8 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
     if current_price is None:
         print("GOLD-X data fetch failed: no gold source available")
         return None
+    if gold_close is None:
+        warnings.append("تعذر مصدر الذهب الأساسي؛ تم استخدام سعر الذهب الاحتياطي بنجاح.")
 
     observed_price_change = _series_change(gold_close, 1)
     price_change = observed_price_change or 0.0
@@ -206,22 +247,26 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
         gold_equity_corr = 0.0
 
     available_secondary = sum(value is not None for value in (dxy_change, nasdaq_change, vix_value))
-    if gold_close is not None and available_secondary == 3:
+    secondary_sources = {source_by_name.get(name) for name in ("dxy", "nasdaq", "vix") if source_by_name.get(name)}
+    if gold_close is not None and available_secondary == 3 and secondary_sources == {"Yahoo Finance"}:
         quality = "live"
         source = "Yahoo Finance"
     elif gold_close is not None:
         quality = "partial"
-        source = "Yahoo Finance + defaults"
-        warnings.append("بيانات الذهب متاحة، لكن بعض المؤشرات الثانوية تستخدم قيماً افتراضية.")
+        source = "Yahoo Finance + " + "+".join(sorted(secondary_sources or {"defaults"}))
+        if available_secondary < 3:
+            warnings.append("بيانات الذهب متاحة، لكن بعض المؤشرات الثانوية تستخدم قيماً افتراضية.")
     else:
         quality = "fallback"
         if metals_gold is not None:
-            source = "Metals-API + defaults"
+            gold_source = "Metals-API"
         elif public_gold is not None:
-            source = "goldprice.dev أو Gold-API + defaults"
+            gold_source = "goldprice.dev أو Gold-API"
         else:
-            source = "Gold-API + defaults"
-        warnings.append("يُعرض سعر الذهب من مصدر احتياطي مع مؤشرات ثانوية افتراضية.")
+            gold_source = "Gold-API"
+        source = gold_source + (" + " + "+".join(sorted(secondary_sources)) if secondary_sources else " + defaults")
+        if available_secondary < 3:
+            warnings.append("يُعرض سعر الذهب من مصدر احتياطي مع مؤشرات ثانوية افتراضية.")
 
     result: Dict[str, Any] = {
         "current_price": current_price,
