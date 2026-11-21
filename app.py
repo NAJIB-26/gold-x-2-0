@@ -13,6 +13,28 @@ from model import gold_x_model  # type: ignore[reportMissingImports]
 from advanced_layers import advanced_summary, build_advanced_snapshot, fetch_optional_market_data
 
 
+NEWS_ITEMS = [
+    ("إحصاءات مشتريات البنوك المركزية", "World Gold Council", "طلب مؤسسي", "https://www.gold.org/goldhub/gold-focus/2026/11/central-bank-gold-statistics-september-2026", "متابعة مشتريات البنوك المركزية والعوامل المؤسسية المؤثرة في الطلب على الذهب."),
+    ("Weekly Markets Monitor", "World Gold Council", "تحليل كلي", "https://www.gold.org/goldhub/gold-focus/2026/11/weekly-markets-monitor-leveraged-repricers", "قراءة دورية للسياسة النقدية والتطورات الجيوسياسية والبيانات الاقتصادية المرتبطة بالذهب."),
+    ("LBMA Snapshot Survey of Professional Analysts", "LBMA", "توقعات محللين", "https://www.lbma.org.uk/articles/gold-price-lbma-snapshot-survey-of-professional-analysts", "توقعات محللي المعادن المحترفين كما ينشرها المصدر، وليست توقعًا صادرًا عن GOLD-X."),
+    ("Gold ETF Holdings and Flows", "World Gold Council", "صناديق ETF", "https://www.gold.org/goldhub/data/gold-etfs-holdings-and-flows", "تدفقات وحيازات صناديق الذهب المدعومة فعليًا، بحسب آخر تحديث منشور."),
+]
+
+OFFICIAL_SOURCES = [
+    ("Federal Reserve / FOMC", "تقويم الاجتماعات والبيانات والمحاضر الرسمية للفيدرالي الأمريكي.", "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"),
+    ("CME Group", "حجم التداول والفائدة المفتوحة لعقود الذهب والبيانات المرتبطة بها.", "https://www.cmegroup.com/markets/metals/precious/gold.volume.html"),
+    ("CFTC COT", "تقرير التزامات المتداولين ومراكز الفئات المختلفة في العقود الآجلة.", "https://www.cftc.gov/dea/futures/deacmxsf.htm"),
+    ("LBMA", "الأسعار المعيارية وبيانات المعادن الثمينة وتوقعات المحللين.", "https://www.lbma.org.uk/prices-and-data/lbma-precious-metal-prices"),
+    ("CME FedWatch", "أداة متابعة توقعات السوق لاحتمالات قرارات الفائدة، وليست قرارًا رسميًا للفيدرالي.", "https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html"),
+]
+
+LIVE_MARKET_LINKS = [
+    ("Reuters Markets", "أخبار الأسواق العالمية والتحركات الاقتصادية اليومية.", "https://www.reuters.com/markets/"),
+    ("CNBC Markets", "تغطية الأسواق والأسهم والعملات والسلع.", "https://www.cnbc.com/markets/"),
+    ("World Gold Council", "أبحاث الذهب والطلب المؤسسي والتدفقات.", "https://www.gold.org/goldhub/research"),
+]
+
+
 st.set_page_config(
     page_title="GOLD-X 2.0 — نظام توقع الذهب",
     page_icon="🥇",
@@ -54,6 +76,14 @@ st.markdown(
     div.stButton > button { border:1px solid rgba(183,121,31,.5); color:#6B4210; background:#FFF9EC; border-radius:10px; font-weight:600; }
     div.stButton > button:hover { border-color:var(--gold); color:#8B5E13; background:#FFF3D0; }
     button[data-baseweb="tab"] { font-weight:600; }
+    .news-card { border:1px solid rgba(183,121,31,.2); border-right:4px solid var(--gold); border-radius:16px; padding:1rem 1.15rem; margin:.45rem 0; background:rgba(255,255,255,.88); box-shadow:0 8px 22px rgba(31,41,55,.05); }
+    .news-card h3 { color:#172033; font-size:1.02rem; margin:.25rem 0 .4rem; }
+    .news-card p { color:#42516A; line-height:1.75; margin:0; }
+    .news-meta { color:#9A6416; font-size:.78rem; font-weight:700; }
+    .source-card { border:1px solid rgba(23,32,51,.1); border-radius:14px; padding:.9rem 1rem; margin:.4rem 0; background:rgba(255,255,255,.7); }
+    .source-card strong { color:#172033; }
+    .source-card p { color:#5B677A; margin:.25rem 0 0; line-height:1.65; }
+    .news-note { border-radius:14px; padding:.8rem 1rem; background:#FFF9EC; border:1px solid #F2D28A; color:#6B4210; line-height:1.7; }
     </style>
     <div dir="rtl">
     """,
@@ -74,7 +104,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-main_tab, advanced_tab, sources_tab = st.tabs(["📈 لوحة الذهب", "🧭 الطبقات المتقدمة", "🗂️ المصادر والحالة"])
+main_tab, advanced_tab, sources_tab, news_center_tab = st.tabs(["📈 لوحة الذهب", "🧭 الطبقات المتقدمة", "🗂️ المصادر والحالة", "📰 الأخبار والتحليلات"])
 
 with main_tab:
 
@@ -216,8 +246,8 @@ with main_tab:
         margin=dict(l=10, r=10, t=20, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="IBM Plex Sans Arabic", color="#CBD5E1"),
-        yaxis=dict(title="المساهمة النسبية (%)", gridcolor="rgba(148,163,184,.12)", zerolinecolor="rgba(216,180,90,.35)"),
+        font=dict(family="IBM Plex Sans Arabic", color="#42516A"),
+        yaxis=dict(title="المساهمة النسبية (%)", gridcolor="rgba(23,32,51,.10)", zerolinecolor="rgba(183,121,31,.35)"),
         xaxis=dict(showgrid=False),
         showlegend=False,
     )
@@ -300,3 +330,32 @@ with sources_tab:
     • استخدم **المصادر والحالة** لمعرفة جودة البيانات قبل اتخاذ أي قرار.
     • زر التحديث في كل قسم يعيد جلب البيانات دون تغيير إعدادات النموذج.
     """)
+
+with news_center_tab:
+    st.markdown('<div class="section-kicker">مركز الأخبار والتحليلات المالية</div>', unsafe_allow_html=True)
+    st.markdown('<div class="news-note">هذا المركز يعيد عرض روابط الجهات الأصلية التي كانت موجودة في الموقع. المقالات والتوقعات الخارجية للمطالعة فقط، ولا تمثل توصية من GOLD-X ولا تدخل تلقائيًا في معادلة السعر.</div>', unsafe_allow_html=True)
+    articles_tab, rates_tab, experts_tab, official_tab = st.tabs(["مقالات الذهب", "الفائدة والفيدرالي", "الخبراء والبنوك", "المصادر الرسمية"])
+    with articles_tab:
+        st.caption("مواد أصلية من مجلس الذهب العالمي وLBMA حول الطلب والتدفقات والاتجاهات الكلية.")
+        for title, organization, category, url, summary in NEWS_ITEMS:
+            st.markdown(f'<div class="news-card" dir="rtl"><div class="news-meta">{organization} · {category}</div><h3>{title}</h3><p>{summary}</p></div>', unsafe_allow_html=True)
+            st.link_button("فتح المقال الأصلي ↗", url, use_container_width=False)
+    with rates_tab:
+        st.markdown('<div class="news-card" dir="rtl"><div class="news-meta">Federal Reserve · FOMC</div><h3>اجتماعات وبيانات الفائدة الأمريكية</h3><p>تابع التقويم الرسمي للاجتماعات والبيانات والمحاضر. المصدر الرسمي لا يعرض توقعًا آليًا، بل القرار والوثائق المنشورة.</p></div>', unsafe_allow_html=True)
+        st.link_button("فتح تقويم الفيدرالي ↗", "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm")
+        st.markdown('<div class="news-card" dir="rtl"><div class="news-meta">CME FedWatch</div><h3>احتمالات قرارات الفائدة بحسب تسعير السوق</h3><p>أداة CME تعرض احتمالات السوق المسعّرة للعقود الآجلة. هي قراءة لتسعير السوق وليست إعلانًا من البنك الفيدرالي.</p></div>', unsafe_allow_html=True)
+        st.link_button("فتح CME FedWatch ↗", "https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html")
+    with experts_tab:
+        st.caption("التوقعات الخارجية تُعرض مع نسبتها إلى مصدرها، ولا يتم خلطها مع توقع GOLD-X الداخلي.")
+        st.markdown('<div class="news-card" dir="rtl"><div class="news-meta">LBMA · Professional Analysts</div><h3>استطلاع توقعات محللي المعادن</h3><p>مقارنة آراء محللين محترفين حول الذهب والمعادن الثمينة من خلال المصدر الأصلي.</p></div>', unsafe_allow_html=True)
+        st.link_button("فتح استطلاع LBMA ↗", "https://www.lbma.org.uk/articles/gold-price-lbma-snapshot-survey-of-professional-analysts")
+        st.markdown('<div class="news-card" dir="rtl"><div class="news-meta">World Gold Council · Research</div><h3>أبحاث الطلب المؤسسي والتدفقات</h3><p>أبحاث مجلس الذهب العالمي حول البنوك المركزية وصناديق ETF واتجاهات الطلب العالمي.</p></div>', unsafe_allow_html=True)
+        st.link_button("فتح أبحاث مجلس الذهب العالمي ↗", "https://www.gold.org/goldhub/research")
+    with official_tab:
+        for name, description, url in OFFICIAL_SOURCES:
+            st.markdown(f'<div class="source-card" dir="rtl"><strong>{name}</strong><p>{description}</p></div>', unsafe_allow_html=True)
+            st.link_button(f"فتح مصدر {name} ↗", url, use_container_width=False)
+        st.markdown("**مراكز أخبار الأسواق**")
+        for name, description, url in LIVE_MARKET_LINKS:
+            st.markdown(f'<div class="source-card" dir="rtl"><strong>{name}</strong><p>{description}</p></div>', unsafe_allow_html=True)
+            st.link_button(f"فتح {name} ↗", url, use_container_width=False)
