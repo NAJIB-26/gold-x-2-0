@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "saved_at_utc": "2026-11-25 21:12 UTC",
+  "data": {
+    "current_price": 3578.85,
+    "price_change": 0.0,
+    "gold_change_1d": null,
+    "gold_change_5d": null,
+    "gold_change_20d": null,
+    "gold_volatility_10d": null,
+    "gold_history_available": false,
+    "volume_spike": 1.0,
+    "dxy_change": 0.007725215511091399,
+    "sp500_change_5d": -0.024450456627198358,
+    "vix": 26.36,
+    "gold_equity_corr": 0.0,
+    "gold_ai_correlation": 0.0,
+    "tip_change": 0.002,
+    "cpi_change": 0.004,
+    "fed_stance": -0.5,
+    "algo_intensity": 0.75,
+    "open_interest_ratio": 1.5,
+    "etf_outflow_ratio": 0.01,
+    "ai_bubble_score": 0.7,
+    "ai_earnings_surprise": 0.0,
+    "ipo_sentiment": 0.0,
+    "data_source": "goldprice.dev أو Gold-API + FRED/DTWEXBGS+FRED/NASDAQCOM+FRED/VIXCLS",
+    "data_quality": "fallback",
+    "data_warnings": [
+      "تم استخدام FRED/DTWEXBGS كبديل يومي لـ dxy.",
+      "تم استخدام FRED/NASDAQCOM كبديل يومي لـ nasdaq.",
+      "تم استخدام FRED/VIXCLS كبديل يومي لـ vix.",
+      "تعذر مصدر الذهب الأساسي؛ تم استخدام سعر الذهب الاحتياطي بنجاح."
+    ],
+    "updated_at_utc": "2026-11-25 21:12 UTC",
+    "storage_status": "fresh"
+  }
+}

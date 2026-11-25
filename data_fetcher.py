@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional, cast
 import numpy as np
 import pandas as pd
 import requests
+from data_store import load_cached_data, save_cached_data
 try:
     import yfinance as yf  # type: ignore[reportMissingImports]
 except Exception:  # يسمح بتشغيل المصدر الاحتياطي حتى عند تعذر تثبيت Yahoo.
@@ -172,8 +173,8 @@ def _latest(series: Optional[pd.Series]) -> Optional[float]:
     return float(series.iloc[-1])
 
 
-def fetch_live_data() -> Optional[Dict[str, Any]]:
-    """إرجاع البيانات مع مصدر وحالة جودة، دون إسقاط الموقع عند فشل مؤشر ثانوي."""
+def _fetch_from_sources() -> Optional[Dict[str, Any]]:
+    """محاولة تحديث البيانات من المصادر الخارجية دون استخدام التخزين المحلي."""
     warnings = []
     series: Dict[str, Optional[pd.Series]] = {}
     source_by_name: Dict[str, str] = {}
@@ -289,3 +290,32 @@ def fetch_live_data() -> Optional[Dict[str, Any]]:
         "updated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
     return result
+
+
+def fetch_live_data(force_refresh: bool = False) -> Optional[Dict[str, Any]]:
+    """تحديث البيانات وحفظ آخر لقطة ناجحة، ثم استخدام اللقطة عند تعذر المصادر.
+
+    ``force_refresh`` محفوظ للتوافق مع زر التحديث؛ التخزين المحلي لا يمنع
+    المحاولة الحية، بل يمنح التطبيق نسخة مستقرة عند انقطاع المصدر.
+    """
+    del force_refresh
+    fresh_data = _fetch_from_sources()
+    if fresh_data is not None:
+        fresh_data["storage_status"] = "fresh"
+        if not save_cached_data(fresh_data):
+            fresh_data.setdefault("data_warnings", []).append(
+                "تعذر حفظ آخر تحديث محلياً؛ سيستمر التطبيق مؤقتاً ببيانات الجلسة."
+            )
+        return fresh_data
+
+    cached_data = load_cached_data()
+    if cached_data is None:
+        return None
+
+    warnings = list(cached_data.get("data_warnings", []))
+    warnings.append("تعذر تحديث المصادر الحية؛ تم استخدام آخر لقطة محفوظة محلياً.")
+    cached_data["data_warnings"] = warnings
+    cached_data["data_quality"] = "cached"
+    cached_data["storage_status"] = "cached"
+    cached_data["data_source"] = f"التخزين المحلي · {cached_data.get('data_source', 'مصادر سابقة')}"
+    return cached_data

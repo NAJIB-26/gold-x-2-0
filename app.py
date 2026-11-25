@@ -149,6 +149,7 @@ with main_tab:
         "live": "بيانات مباشرة من المصدر الأساسي",
         "partial": "بيانات جزئية: بعض المؤشرات تستخدم قيماً افتراضية",
         "fallback": "بيانات احتياطية: سعر الذهب من مصدر بديل",
+        "cached": "آخر بيانات محفوظة محلياً: تعذر التحديث الحي مؤقتاً",
         "unknown": "حالة المصدر غير محددة",
     }
     if quality == "live":
@@ -321,8 +322,13 @@ with advanced_tab:
 
 with sources_tab:
     st.markdown('<div class="section-kicker">مصادر البيانات وحالة النظام</div>', unsafe_allow_html=True)
-    st.success(f"حالة البيانات الأساسية: {raw_data.get('data_quality', 'unknown')} · {raw_data.get('data_source', 'غير محدد')}")
+    quality_text = quality_labels.get(raw_data.get("data_quality", "unknown"), raw_data.get("data_quality", "unknown"))
+    if raw_data.get("storage_status") == "cached":
+        st.warning(f"{quality_text} · {raw_data.get('storage_saved_at_utc', 'وقت الحفظ غير معروف')}")
+    else:
+        st.success(f"{quality_text} · {raw_data.get('data_source', 'غير محدد')}")
     st.write("التبويب الأساسي يحافظ على النموذج الحالي كما هو. التبويب المتقدم يعرض مؤشرات مستقلة ولا يحقن بيانات افتراضية في التوصية الأساسية.")
+    st.caption(f"ملف البيانات المحلي: {raw_data.get('storage_file', 'data/market_data.json')}")
     st.markdown("**اختصارات الاستخدام**")
     st.markdown("""
     • استخدم تبويب **لوحة الذهب** للسعر والتوصية الحالية.
